@@ -1,0 +1,110 @@
+- name: bootstrap alpine service engine
+
+  hosts: services 
+
+  tasks:
+
+    - name: install packages
+      apk:
+        name: openssh,bash,procps,man,sudo
+
+    - name: install daemontools from testing repository
+      apk:
+        name: daemontools
+        repository: https://dl-3.alpinelinux.org/alpine/edge/testing/
+
+    - name: generate host key
+      command: ssh-keygen -A
+
+    - name: create sudo group
+      command: addgroup -S sudo
+       
+    - name: create alpine group
+      command: addgroup alpine
+
+    - name: create alpine user
+      command: adduser alpine -G alpine -G sudo -D
+
+    - name: set alpine password
+      command:  passwd -u alpine
+
+    - name: sudo without password for sudo group
+      copy:
+        content: '%sudo ALL=(ALL:ALL) NOPASSWD:ALL'
+        dest: /etc/sudoers.d/wheel_nopasswd
+        mode: 0440
+
+    - name: add service directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0700'
+      loop:
+        - /service
+        - /var/svc
+        - /var/svc/sshd
+        - /var/svc/sshd/log
+        - /var/log/sshd
+
+    - name: add sshd/run
+      copy:
+        dest: /var/svc/sshd/run
+        mode: '0700'
+        content: |
+          #!/bin/sh
+          exec 2>&1
+          exec /usr/sbin/sshd -D -e
+
+    - name: add sshd/log/run
+      copy:
+        dest: /var/svc/sshd/log/run
+        mode: '0700'
+        content: |
+          #!/bin/sh
+          exec multilog t s1000000 /var/log/sshd
+
+    - name: link service to activate
+      file:
+        src: /var/svc/sshd
+        dest: /service/sshd
+        state: link
+
+    - name: set ssh key
+      authorized_key:
+        user: alpine
+        state: present
+        key: "{{ lookup('env', 'SSH_KEY') | b64decode }}" 
+
+    - name: set motd
+      copy:
+        src: ./motd
+        dest: /etc/motd
+        mode: '0664'
+
+    - name: suppress sudo error
+      copy:
+        dest: /etc/sudo.conf
+        mode: '0600'
+        content: |
+          set disable_coredump false
+
+    - name: create /etc/environment for sudo
+      shell: awk </etc/profile '/export PATH=/{print $2}' >/etc/environment
+
+    - name: disable root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^PermitRootLogin
+        line: PermitRootLogin no
+
+    - name: disable password authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^PasswordAuthentication
+        line: PasswordAuthentication no
+
+    - name: allow only public key authentication
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^AuthenticationMethods
+        line: AuthenticationMethods publickey

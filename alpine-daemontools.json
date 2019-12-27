@@ -1,0 +1,46 @@
+{
+	"variables": {
+		"ansible_host": "alpine-daemontools",
+		"ansible_connection": "docker",
+		"docker_repo": "{{env `DOCKER_REPO`}}",
+		"docker_tag": "{{env `DOCKER_TAG`}}"
+	},
+	"builders": [
+		{
+			"type": "docker",
+			"image": "alpine:3",
+			"commit": true,
+			"changes": [
+				"EXPOSE 22",
+				"ENTRYPOINT /usr/bin/svscanboot"
+			],
+			"run_command": ["-d", "-i", "-t", "--name", "{{user `ansible_host`}}", "{{.Image}}", "/bin/sh"]
+		}
+	],
+	"provisioners": [
+		{
+			"type": "shell",
+			"inline": ["apk update", "apk add python"]
+		},
+		{
+			"type": "ansible",
+			"groups": [ "services" ],
+			"user": "root",
+			"playbook_file": "bootstrap.yml",
+			"extra_arguments": [
+				"--extra-vars",
+				"ansible_host={{user `ansible_host`}} ansible_connection={{user `ansible_connection`}}"
+			]
+		}
+	],
+	"post-processors": [
+		[
+ 			{
+				"type": "docker-tag",
+				"repository": "{{user `docker_repo`}}",
+				"tag": "{{user `docker_tag`}}"
+			},
+			"docker-push"
+		]
+	]
+}
