@@ -20,7 +20,7 @@
 	"provisioners": [
 		{
 			"type": "shell",
-			"inline": ["apk update", "apk add python"]
+			"script": "install-python3.sh"
 		},
 		{
 			"type": "ansible",
@@ -39,6 +39,14 @@
 				"type": "docker-tag",
 				"repository": "{{user `docker_repo`}}",
 				"tag": "{{user `docker_tag`}}"
+			},
+			"docker-push"
+		],
+		[
+ 			{
+				"type": "docker-tag",
+				"repository": "{{user `docker_repo`}}",
+				"tag": "latest"
 			},
 			"docker-push"
 		]

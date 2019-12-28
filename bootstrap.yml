@@ -34,40 +34,14 @@
         dest: /etc/sudoers.d/wheel_nopasswd
         mode: 0440
 
-    - name: add service directories
-      file:
-        path: "{{ item }}"
-        state: directory
-        mode: '0700'
-      loop:
-        - /service
-        - /var/svc
-        - /var/svc/sshd
-        - /var/svc/sshd/log
-        - /var/log/sshd
+    - name: add sshd service
+      include: add-service.yml SVC_NAME=sshd SVC_CMD="exec /usr/sbin/sshd -D -e" SVC_LOGSIZE=10000
 
-    - name: add sshd/run
-      copy:
-        dest: /var/svc/sshd/run
-        mode: '0700'
-        content: |
-          #!/bin/sh
-          exec 2>&1
-          exec /usr/sbin/sshd -D -e
+    - name: add crond service
+      include: add-service.yml SVC_NAME=crond SVC_CMD="exec /usr/sbin/crond -f -d 8" SVC_LOGSIZE=10000
 
-    - name: add sshd/log/run
-      copy:
-        dest: /var/svc/sshd/log/run
-        mode: '0700'
-        content: |
-          #!/bin/sh
-          exec multilog t s1000000 /var/log/sshd
-
-    - name: link service to activate
-      file:
-        src: /var/svc/sshd
-        dest: /service/sshd
-        state: link
+    - name: add syslogd service
+      include: add-service.yml SVC_NAME=syslog SVC_CMD="exec /sbin/syslogd -n -s 1024 -b 10 -D" SVC_LOGSIZE=10000
 
     - name: set ssh key
       authorized_key:

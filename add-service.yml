@@ -1,0 +1,34 @@
+- name: add service directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0700'
+  loop:
+    - /service
+    - /var/svc
+    - /var/svc/{{ SVC_NAME }}
+    - /var/svc/{{ SVC_NAME }}/log
+    - /var/log/{{ SVC_NAME }}
+
+- name: add service /run
+  copy:
+    dest: /var/svc/{{ SVC_NAME }}/run
+    mode: '0700'
+    content: |
+      #!/bin/sh
+      exec 2>&1
+      {{ SVC_CMD }} 
+
+- name: add service/log/run
+  copy:
+    dest: /var/svc/{{ SVC_NAME }}/log/run
+    mode: '0700'
+    content: |
+      #!/bin/sh
+      exec multilog t s{{ SVC_LOGSIZE }} /var/log/{{ SVC_NAME }}
+
+- name: link service to activate
+  file:
+    src: /var/svc/{{ SVC_NAME }}
+    dest: /service/{{ SVC_NAME }}
+    state: link
