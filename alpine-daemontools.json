@@ -12,7 +12,8 @@
 			"commit": true,
 			"changes": [
 				"EXPOSE 22",
-				"ENTRYPOINT /usr/bin/svscanboot"
+				"ENTRYPOINT [\"/usr/bin/dumb-init\", \"--\"]",
+				"CMD /etc/rc" 
 			],
 			"run_command": ["-d", "-i", "-t", "--name", "{{user `ansible_host`}}", "{{.Image}}", "/bin/sh"]
 		}

@@ -6,12 +6,30 @@
 
     - name: install packages
       apk:
-        name: openssh,bash,procps,man,sudo
+        name: dumb-init,openssh,bash,procps,man,sudo
 
     - name: install daemontools from testing repository
       apk:
         name: daemontools
         repository: https://dl-3.alpinelinux.org/alpine/edge/testing/
+
+    - name: write init script to /etc/rc
+      copy:
+        dest: /etc/rc
+        mode: '0744'
+        content: |
+          #!/bin/sh
+          [ -x /etc/rc.local ] && . /etc/rc.local
+          exec /usr/bin/svscanboot
+
+    - name: write /etc/rc.local stub
+      copy:
+        dest: /etc/rc.local
+        mode: '0644'
+        content: | 
+          #!/bin/sh
+          # For local boot-time configuration, add commmands here and make executable
+
 
     - name: generate host key
       command: ssh-keygen -A
